@@ -5,6 +5,8 @@ import (
 	"os"
 	"log"
 	"bufio"
+	"strings"
+	"strconv"
 )
 
 type Point3D struct {
@@ -32,6 +34,13 @@ func ErrorCheck(err error) {
 	}
 }
 
+//convert a string to a float
+func StringToFloat(s string) float64 {
+	x, err := strconv.ParseFloat(s, 64)
+	ErrorCheck(err)
+	return x
+}
+
 //reads an XYZ file and returns a slice of Point3D
 func ReadXYZ(filename string) []Point3D {
 	var points []Point3D
@@ -41,17 +50,23 @@ func ReadXYZ(filename string) []Point3D {
 	ErrorCheck(err)
 	defer file.Close()
 
-	//create a scanner for the file
+	//create a scanner for the file and skip the header
 	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+
 
 	//read from the file line by line
 	for scanner.Scan() {
 		//scan in each point
 		point := scanner.Text()
-		splitPoint := strings.Split(point, ",")
-	
+		splitPoint := strings.Split(point, "\t")
+
 		//store each point into points
-		points.append(Point3D{ {splitPoint[0], splitPoint[1], splitPoint[2] })
+		points = append(points, Point3D{ 
+			StringToFloat(splitPoint[0]), 
+			StringToFloat(splitPoint[1]),
+			StringToFloat(splitPoint[2]),
+		})
 	}
 
 	//make sure there were no errors while scanning the file
@@ -60,43 +75,50 @@ func ReadXYZ(filename string) []Point3D {
 	return points
 }
 
-//saves a slice of Point3D into an XYZ file
-func SaveXYZ(filename string, points []Point3D) {
+// //saves a slice of Point3D into an XYZ file
+// func SaveXYZ(filename string, points []Point3D) {
 
-}
+// }
 
-//computes the distance between points p1 and p2
-func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
+// //computes the distance between points p1 and p2
+// func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
 
-}
+// }
 
-//computes the plane defined by a set of 3 points
-func GetPlane(points []Point3D) Plane3D {
+// //computes the plane defined by a set of 3 points
+// func GetPlane(points []Point3D) Plane3D {
 
-}
+// }
 
-//computes the number of required RANSAC iterations
-func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
+// //computes the number of required RANSAC iterations
+// func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
 
-}
+// }
 
-//computes the support of a plane in a set of points
-func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
+// //computes the support of a plane in a set of points
+// func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
 
-}
+// }
 
-//extracts the points that support the given plane
-//and returns them as a slice of points
-func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D {
+// //extracts the points that support the given plane
+// //and returns them as a slice of points
+// func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D {
 
-}
+// }
 
-//creates a new slice of points in which all points
-//belonging to the plane have been removed
-func RemovePlane(plane Plane3D, points []Point3D, eps float64) []Point3D {
+// //creates a new slice of points in which all points
+// //belonging to the plane have been removed
+// func RemovePlane(plane Plane3D, points []Point3D, eps float64) []Point3D {
 
+// }
+
+func PrintPoints(points []Point3D) {
+	for i, point := range points {
+		fmt.Println(i + 1, point)
+	}
 }
 
 func main() {
-	
+	points := ReadXYZ("PointCloud1.xyz")
+	PrintPoints(points)
 }
