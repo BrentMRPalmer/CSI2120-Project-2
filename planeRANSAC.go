@@ -75,10 +75,24 @@ func ReadXYZ(filename string) []Point3D {
 	return points
 }
 
-// //saves a slice of Point3D into an XYZ file
-// func SaveXYZ(filename string, points []Point3D) {
+//saves a slice of Point3D into an XYZ file
+func SaveXYZ(filename string, points []Point3D) {
+	//create a file to write to
+	file, err := os.Create(filename)
+	ErrorCheck(err)
+	defer file.Close()
+	file.WriteString("x\ty\tz\n")
 
-// }
+	//iterate over each point and write each point to the file
+	for _, point := range points {
+		_, err := file.WriteString(fmt.Sprintf("%f\t%f\t%f\n", point.X, point.Y, point.Z))
+		ErrorCheck(err)
+	}
+	
+	//flush buffered data (write data immediately and block function return until written)
+	err = file.Sync()
+	ErrorCheck(err)
+}
 
 // //computes the distance between points p1 and p2
 // func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
@@ -120,5 +134,6 @@ func PrintPoints(points []Point3D) {
 
 func main() {
 	points := ReadXYZ("PointCloud1.xyz")
-	PrintPoints(points)
+	//PrintPoints(points)
+	SaveXYZ("newfile.xyz", points)
 }
