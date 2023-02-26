@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
+	"math"
 )
 
 type Point3D struct {
@@ -94,10 +95,10 @@ func SaveXYZ(filename string, points []Point3D) {
 	ErrorCheck(err)
 }
 
-// //computes the distance between points p1 and p2
-// func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
-
-// }
+//computes the distance between points p1 and p2
+func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
+	return math.Sqrt( (p2.X - p1.X)*(p2.X - p1.X) + (p2.Y - p1.Y)*(p2.Y - p1.Y) + (p2.Z-p1.Z)*(p2.Z-p1.Z) )
+}
 
 // //computes the plane defined by a set of 3 points
 // func GetPlane(points []Point3D) Plane3D {
@@ -133,7 +134,10 @@ func PrintPoints(points []Point3D) {
 }
 
 func main() {
-	points := ReadXYZ("PointCloud1.xyz")
-	//PrintPoints(points)
-	SaveXYZ("newfile.xyz", points)
+	// points := ReadXYZ("PointCloud1.xyz")
+	// PrintPoints(points)
+	// SaveXYZ("newfile.xyz", points)
+	pointA := Point3D{1, 1, -15}
+	pointB := Point3D{17, 6, 2}
+	fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
 }
