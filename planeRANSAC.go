@@ -130,8 +130,6 @@ func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64
 	return int( math.Ceil( math.Log10(1 - confidence) / math.Log10(1 - math.Pow(percentageOfPointsOnPlane, 3) ) ) )
 }
 
-// }
-
 // //computes the support of a plane in a set of points
 // func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
 
