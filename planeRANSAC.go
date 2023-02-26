@@ -100,10 +100,30 @@ func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
 	return math.Sqrt( (p2.X - p1.X)*(p2.X - p1.X) + (p2.Y - p1.Y)*(p2.Y - p1.Y) + (p2.Z-p1.Z)*(p2.Z-p1.Z) )
 }
 
-// //computes the plane defined by a set of 3 points
-// func GetPlane(points []Point3D) Plane3D {
+//computes the plane defined by a set of 3 points
+func GetPlane(points []Point3D) Plane3D {
+	//Assuming plane in Ax + Bx + Cz = D form
 
-// }
+	//calculate the first vector (p2p1)
+	x1 := points[1].X - points[0].X
+	y1 := points[1].Y - points[0].Y
+	z1 := points[1].Z - points[0].Z
+
+	//calculate the second vector (p3p1)
+	x2 := points[2].X - points[0].X
+	y2 := points[2].Y - points[0].Y
+	z2 := points[2].Z - points[0].Z
+
+	//calculate the normal of the two vectors
+	a := y1 * z2 - z1 * y2
+	b := z1 * x2 - x1 * z2
+	c := x1 * y2 - y1 * x2
+
+	//use a point to calculate the value of d
+	d := a * points[0].X + b * points[0].Y + c * points[0].Z
+
+	return Plane3D{A: a, B: b, C: c, D: d}
+}
 
 // //computes the number of required RANSAC iterations
 // func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
@@ -133,11 +153,24 @@ func PrintPoints(points []Point3D) {
 	}
 }
 
+//prints out a plane equation in Ax + By + Cz = D format
+func (plane *Plane3D) Print() {
+	fmt.Printf("%fx + %fy + %fz = %f", plane.A, plane.B, plane.C, plane.D)
+}
+
 func main() {
 	// points := ReadXYZ("PointCloud1.xyz")
 	// PrintPoints(points)
 	// SaveXYZ("newfile.xyz", points)
-	pointA := Point3D{1, 1, -15}
-	pointB := Point3D{17, 6, 2}
-	fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
+	// pointA := Point3D{1, 1, -15}
+	// pointB := Point3D{17, 6, 2}
+	// fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
+	points := [3]Point3D {
+		Point3D{153.5, 27, -23},
+		Point3D{36, -233, 556},
+		Point3D{50, 13, -419},
+	}
+	plane := GetPlane(points[:])
+	plane.Print()
+
 }
