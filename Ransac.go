@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"log"
+	"bufio"
 )
 
 type Point3D struct {
@@ -22,9 +25,39 @@ type Plane3DwSupport struct {
 	SupportSize int
 }
 
+//used to check for errors
+func ErrorCheck(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 //reads an XYZ file and returns a slice of Point3D
 func ReadXYZ(filename string) []Point3D {
+	var points []Point3D
 
+	//open the file for reading, checking for errors, and closing after the function
+	file, err := os.Open(filename)
+	ErrorCheck(err)
+	defer file.Close()
+
+	//create a scanner for the file
+	scanner := bufio.NewScanner(file)
+
+	//read from the file line by line
+	for scanner.Scan() {
+		//scan in each point
+		point := scanner.Text()
+		splitPoint := strings.Split(point, ",")
+	
+		//store each point into points
+		points.append(Point3D{ {splitPoint[0], splitPoint[1], splitPoint[2] })
+	}
+
+	//make sure there were no errors while scanning the file
+	ErrorCheck(scanner.Err())
+
+	return points
 }
 
 //saves a slice of Point3D into an XYZ file
@@ -61,5 +94,9 @@ func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D
 //creates a new slice of points in which all points
 //belonging to the plane have been removed
 func RemovePlane(plane Plane3D, points []Point3D, eps float64) []Point3D {
+
+}
+
+func main() {
 	
 }
