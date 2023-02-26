@@ -161,10 +161,13 @@ func (plane *Plane3D) Print() {
 func main() {
 	// points := ReadXYZ("PointCloud1.xyz")
 	// PrintPoints(points)
+
 	// SaveXYZ("newfile.xyz", points)
+
 	// pointA := Point3D{1, 1, -15}
 	// pointB := Point3D{17, 6, 2}
 	// fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
+
 	// points := [3]Point3D {
 	// 	Point3D{153.5, 27, -23},
 	// 	Point3D{36, -233, 556},
@@ -172,6 +175,7 @@ func main() {
 	// }
 	// plane := GetPlane(points[:])
 	// plane.Print()
+
 	fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
 
 }
