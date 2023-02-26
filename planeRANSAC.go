@@ -125,8 +125,10 @@ func GetPlane(points []Point3D) Plane3D {
 	return Plane3D{A: a, B: b, C: c, D: d}
 }
 
-// //computes the number of required RANSAC iterations
-// func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
+//computes the number of required RANSAC iterations
+func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
+	return int( math.Ceil( math.Log10(1 - confidence) / math.Log10(1 - math.Pow(percentageOfPointsOnPlane, 3) ) ) )
+}
 
 // }
 
@@ -165,12 +167,13 @@ func main() {
 	// pointA := Point3D{1, 1, -15}
 	// pointB := Point3D{17, 6, 2}
 	// fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
-	points := [3]Point3D {
-		Point3D{153.5, 27, -23},
-		Point3D{36, -233, 556},
-		Point3D{50, 13, -419},
-	}
-	plane := GetPlane(points[:])
-	plane.Print()
+	// points := [3]Point3D {
+	// 	Point3D{153.5, 27, -23},
+	// 	Point3D{36, -233, 556},
+	// 	Point3D{50, 13, -419},
+	// }
+	// plane := GetPlane(points[:])
+	// plane.Print()
+	fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
 
 }
