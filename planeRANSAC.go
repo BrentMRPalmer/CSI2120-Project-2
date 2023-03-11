@@ -100,6 +100,11 @@ func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
 	return math.Sqrt( (p2.X - p1.X)*(p2.X - p1.X) + (p2.Y - p1.Y)*(p2.Y - p1.Y) + (p2.Z-p1.Z)*(p2.Z-p1.Z) )
 }
 
+//computes the distance between a point and a plane
+func (plane *Plane3D) GetDistance(point *Point3D) float64{
+	return math.Abs( plane.A*point.X + plane.B*point.Y + plane.C*point.Z - plane.D) / math.Sqrt(plane.A*plane.A + plane.B*plane.B + plane.C*plane.C)
+}
+
 //computes the plane defined by a set of 3 points
 func GetPlane(points []Point3D) Plane3D {
 	//Assuming plane in Ax + Bx + Cz = D form
@@ -130,9 +135,13 @@ func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64
 	return int( math.Ceil( math.Log10(1 - confidence) / math.Log10(1 - math.Pow(percentageOfPointsOnPlane, 3) ) ) )
 }
 
-// //computes the support of a plane in a set of points
+// // //computes the support of a plane in a set of points
 // func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
+// 	support := Plane3DwSupport { plane, 0 }
 
+// 	for _, point := range points{
+// 		if(point.)
+// 	}
 // }
 
 // //extracts the points that support the given plane
@@ -176,6 +185,11 @@ func main() {
 	// plane := GetPlane(points[:])
 	// plane.Print()
 
-	fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
+	//fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
+
+	plane := Plane3D{2, 4, 3, -5}
+	point := Point3D{1, 2, 3}
+
+	fmt.Printf("%f", plane.GetDistance(&point))
 
 }
