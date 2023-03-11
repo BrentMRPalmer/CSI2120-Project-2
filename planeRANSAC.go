@@ -132,17 +132,21 @@ func GetPlane(points []Point3D) Plane3D {
 
 //computes the number of required RANSAC iterations
 func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
+	// l - |a*x + b*y + c*z - d| / sqrt(a^2, b^2, c^2)
 	return int( math.Ceil( math.Log10(1 - confidence) / math.Log10(1 - math.Pow(percentageOfPointsOnPlane, 3) ) ) )
 }
 
-// // //computes the support of a plane in a set of points
-// func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
-// 	support := Plane3DwSupport { plane, 0 }
+// //computes the support of a plane in a set of points
+func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
+	support := Plane3DwSupport { plane, 0 }
 
-// 	for _, point := range points{
-// 		if(point.)
-// 	}
-// }
+	for _, point := range points{
+		if(plane.GetDistance(&point) < eps){
+			support.SupportSize++;
+		}
+	}
+	return support;
+}
 
 // //extracts the points that support the given plane
 // //and returns them as a slice of points
@@ -187,9 +191,18 @@ func main() {
 
 	//fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
 
-	plane := Plane3D{2, 4, 3, -5}
-	point := Point3D{1, 2, 3}
+	// plane := Plane3D{2, 4, 3, -5}
+	// point := Point3D{1, 2, 3}
+	// fmt.Printf("%f", plane.GetDistance(&point))
 
-	fmt.Printf("%f", plane.GetDistance(&point))
+	plane := Plane3D{2, 4, 3, -5}
+	points := [3]Point3D {
+		Point3D{1, 2, 3},
+		Point3D{100, 200, 300},
+		Point3D{2, 3, 4},
+	}
+
+	planeSupport := GetSupport(plane, points[:], 7.0)
+	fmt.Printf("%d", planeSupport.SupportSize)
 
 }
