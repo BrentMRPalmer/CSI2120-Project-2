@@ -182,7 +182,7 @@ func PrintPoints(points []Point3D) {
 
 //prints out a plane equation in Ax + By + Cz = D format
 func (plane *Plane3D) Print() {
-	fmt.Printf("%fx + %fy + %fz = %f", plane.A, plane.B, plane.C, plane.D)
+	fmt.Printf("%fx + %fy + %fz = %f\n", plane.A, plane.B, plane.C, plane.D)
 }
 
 //Pipeline functions
@@ -261,6 +261,30 @@ func TakeN(wg *sync.WaitGroup, stop chan<- bool, randomTriplet <-chan [3]Point3D
 	return tripletPointStream
 }
 
+//STAGE 4 
+//Plane estimator: It reads arrays of three Point3D and computes the plane defined by these points
+//its ouput channel transmits Plane3D instances describing the computed plane parameters
+func PlaneEstimator(wg *sync.WaitGroup, stop <-chan bool, randomTriplet <-chan [3]Point3D) <-chan Plane3D {
+	planeStream := make(chan Plane3D)
+
+	go func() {
+		defer func() {wg.Done()} ()
+		defer close(planeStream)
+		for {
+			triplet := <- randomTriplet
+			plane := GetPlane(triplet[:])
+			select {
+				case <- stop:
+					return
+				case planeStream <- plane:
+			}
+		}
+	}()
+
+	return planeStream
+}
+
+
 func main() {
 	//read the XYZ file specified as a first argument to your go program and create
 	//the corresponding slice of Point3D, composed of the set of points of the XYZ file
@@ -290,6 +314,9 @@ func main() {
 	wg.Add(1)
 	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
 
+	wg.Add(1)
+	randomPlane := PlaneEstimator(wg, stop, nTriplets)
+
 
 	// for i := 0 ; i < 10 ; i++ {
 	// 	point := <- randomPoints
@@ -301,16 +328,19 @@ func main() {
 	// 	PrintPoints(threePoints[:])
 	// }
 
-	for i := 0 ; i < 40 ; i++ {
-		threePoints := <- nTriplets
-		PrintPoints(threePoints[:])
+	var i int
+	for plane := range randomPlane{
+		i++
+		fmt.Printf("%d: ", i)
+		plane.Print()
 	}
+	
 
 	//so it successfully closed the point generator
-	for i := 0 ; i < 10 ; i++ {
-		point := <- randomPoints
-		fmt.Printf("%v\n", point)
-	}
+	// for i := 0 ; i < 10 ; i++ {
+	// 	point := <- randomPoints
+	// 	fmt.Printf("%v\n", point)
+	// }
 
 	wg.Wait()
 }
