@@ -284,6 +284,30 @@ func PlaneEstimator(wg *sync.WaitGroup, stop <-chan bool, randomTriplet <-chan [
 	return planeStream
 }
 
+//STAGE 5
+//Supporting point finder: Plane3D -> Plane3DwSupport
+//It counts the number of points in the provided slice of Point3D (the input point cloud)
+//that supports the received 3D plane. Its output channel transmits the plane
+//parameters and the number of supporting points in a Point3DwSupport instance
+func SupportingPointFinder(wg *sync.WaitGroup, stop <-chan bool, randomPlane <-chan Plane3D, points []Point3D, eps float64) <-chan Plane3DwSupport {
+	planeSupportStream := make(chan Plane3DwSupport)
+
+	go func() {
+		defer func() {wg.Done()} ()
+		defer close(planeSupportStream)
+		for {
+			plane := <- randomPlane
+			planeSupport := GetSupport(plane, points[:], eps)
+			select {
+				case <- stop:
+					return
+				case planeSupportStream <- planeSupport:
+			}
+		}
+	}()
+
+	return planeSupportStream
+}
 
 func main() {
 	//read the XYZ file specified as a first argument to your go program and create
@@ -298,6 +322,7 @@ func main() {
 	//provided as 1st and 2nd arguments arguments for the GetNumberOfIterations function
 	confidence := StringToFloat(args[1])
 	percentageOfPointsOnPlane := StringToFloat(args[2]) 
+	eps := StringToFloat(args[3])
 	numIterations := GetNumberOfIterations(confidence, percentageOfPointsOnPlane)
 
 	//create and start the RANSAC find dominant plane pipeline
@@ -317,6 +342,9 @@ func main() {
 	wg.Add(1)
 	randomPlane := PlaneEstimator(wg, stop, nTriplets)
 
+	wg.Add(1)
+	randomSupport := SupportingPointFinder(wg, stop, randomPlane, points, eps)
+
 
 	// for i := 0 ; i < 10 ; i++ {
 	// 	point := <- randomPoints
@@ -328,11 +356,18 @@ func main() {
 	// 	PrintPoints(threePoints[:])
 	// }
 
+	// var i int
+	// for plane := range randomPlane{
+	// 	i++
+	// 	fmt.Printf("%d: ", i)
+	// 	plane.Print()
+	// }
+
 	var i int
-	for plane := range randomPlane{
+	for support := range randomSupport{
 		i++
 		fmt.Printf("%d: ", i)
-		plane.Print()
+		fmt.Printf("%v\n", support)
 	}
 	
 
