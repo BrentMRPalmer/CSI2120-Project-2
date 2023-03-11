@@ -1,0 +1,37 @@
+	// points := ReadXYZ("PointCloud1.xyz")
+	// PrintPoints(points)
+
+	// SaveXYZ("newfile.xyz", points)
+
+	// pointA := Point3D{1, 1, -15}
+	// pointB := Point3D{17, 6, 2}
+	// fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
+
+	// points := [3]Point3D {
+	// 	Point3D{153.5, 27, -23},
+	// 	Point3D{36, -233, 556},
+	// 	Point3D{50, 13, -419},
+	// }
+	// plane := GetPlane(points[:])
+	// plane.Print()
+
+	//fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
+
+	// plane := Plane3D{2, 4, 3, -5}
+	// point := Point3D{1, 2, 3}
+	// fmt.Printf("%f", plane.GetDistance(&point))
+
+	// plane := Plane3D{2, 4, 3, -5}
+	// points := [3]Point3D {
+	// 	Point3D{1, 2, 3},
+	// 	Point3D{100, 200, 300},
+	// 	Point3D{2, 3, 4},
+	// }
+	// planeSupport := GetSupport(plane, points[:], 7.0)
+	// fmt.Printf("%d\n", planeSupport.SupportSize)
+	// validPoints := GetSupportingPoints(plane, points[:], 7.0)
+	// PrintPoints(validPoints)
+	// leftoverPoints := RemovePlane(plane, points[:], 7.0)
+	// PrintPoints(leftoverPoints)
+
+	//REAL MAIN STARTS HERE

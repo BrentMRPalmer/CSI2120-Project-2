@@ -8,6 +8,8 @@ import (
 	"strings"
 	"strconv"
 	"math"
+	"sync"
+	"math/rand"
 )
 
 type Point3D struct {
@@ -183,41 +185,59 @@ func (plane *Plane3D) Print() {
 	fmt.Printf("%fx + %fy + %fz = %f", plane.A, plane.B, plane.C, plane.D)
 }
 
+//Pipeline functions
+
+//Randpoint point generator: -> Point3D
+//randomly selects a point from the provided slice of Point3D (the input point cloud).
+//its output channel transmits instances of Point3D
+func randomPointGenerator(wg *sync.WaitGroup, stop <-chan bool, points []Point3D) <-chan Point3D {
+	pointStream := make(chan Point3D)
+
+	go func() {
+		defer func() {wg.Done()} ()
+		defer close(pointStream)
+		for {
+			select {
+				case <- stop:
+					return
+				case pointStream <- points[rand.Intn(len(points))]:
+			}
+		}
+	}()
+
+	return pointStream
+}
+
+
 func main() {
-	// points := ReadXYZ("PointCloud1.xyz")
-	// PrintPoints(points)
+	//read the XYZ file specified as a first argument to your go program and create
+	//the corresponding slice of Point3D, composed of the set of points of the XYZ file
+	args := os.Args[1:]
+	points := ReadXYZ(args[0])
 
-	// SaveXYZ("newfile.xyz", points)
+	//create a bestSupport variable of type Plane3DwSupport initialized to all 0s
+	//var bestSupport Plane3DwSupport
 
-	// pointA := Point3D{1, 1, -15}
-	// pointB := Point3D{17, 6, 2}
-	// fmt.Printf("Distance: %f", pointA.GetDistance(&pointB))
+	//find the number of iterations required based on the specified confidence and percentage
+	//provided as 1st and 2nd arguments arguments for the GetNumberOfIterations function
+	confidence := StringToFloat(args[1])
+	percentageOfPointsOnPlane := StringToFloat(args[2]) 
+	numIterations := GetNumberOfIterations(confidence, percentageOfPointsOnPlane)
+	fmt.Printf("%d\n", numIterations)
 
-	// points := [3]Point3D {
-	// 	Point3D{153.5, 27, -23},
-	// 	Point3D{36, -233, 556},
-	// 	Point3D{50, 13, -419},
-	// }
-	// plane := GetPlane(points[:])
-	// plane.Print()
+	//create and start the RANSAC find dominant plane pipeline
+	//this pipeline automatically stops after the required number of iterations
+	wg := &sync.WaitGroup{}
+	stop := make(chan bool)
 
-	//fmt.Printf("%d", GetNumberOfIterations(0.99, 0.5))
+	wg.Add(1)
+	randomPoints := randomPointGenerator(wg, stop, points)
 
-	// plane := Plane3D{2, 4, 3, -5}
-	// point := Point3D{1, 2, 3}
-	// fmt.Printf("%f", plane.GetDistance(&point))
-
-	plane := Plane3D{2, 4, 3, -5}
-	points := [3]Point3D {
-		Point3D{1, 2, 3},
-		Point3D{100, 200, 300},
-		Point3D{2, 3, 4},
+	for i := 0 ; i < 10 ; i++ {
+		point := <- randomPoints
+		fmt.Printf("%v\n", point)
 	}
-	planeSupport := GetSupport(plane, points[:], 7.0)
-	fmt.Printf("%d\n", planeSupport.SupportSize)
-	validPoints := GetSupportingPoints(plane, points[:], 7.0)
-	PrintPoints(validPoints)
-	leftoverPoints := RemovePlane(plane, points[:], 7.0)
-	PrintPoints(leftoverPoints)
-
+	stop <- true
+	close(stop)
+	wg.Wait()
 }
