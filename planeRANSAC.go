@@ -342,40 +342,12 @@ func main() {
 	wg.Add(1)
 	randomPlane := PlaneEstimator(wg, stop, nTriplets)
 
-	wg.Add(1)
-	randomSupport := SupportingPointFinder(wg, stop, randomPlane, points, eps)
-
-
-	// for i := 0 ; i < 10 ; i++ {
-	// 	point := <- randomPoints
-	// 	fmt.Printf("%v\n", point)
-	// }
-
-	// for i := 0 ; i < 3 ; i++ {
-	// 	threePoints := <-randomTriplets
-	// 	PrintPoints(threePoints[:])
-	// }
-
-	// var i int
-	// for plane := range randomPlane{
-	// 	i++
-	// 	fmt.Printf("%d: ", i)
-	// 	plane.Print()
-	// }
-
-	var i int
-	for support := range randomSupport{
-		i++
-		fmt.Printf("%d: ", i)
-		fmt.Printf("%v\n", support)
+	var supportingPointFinders []<-chan Plane3DwSupport
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, stop, randomPlane, points, eps))
 	}
-	
 
-	//so it successfully closed the point generator
-	// for i := 0 ; i < 10 ; i++ {
-	// 	point := <- randomPoints
-	// 	fmt.Printf("%v\n", point)
-	// }
 
 	wg.Wait()
 }

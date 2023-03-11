@@ -35,3 +35,35 @@
 	// PrintPoints(leftoverPoints)
 
 	//REAL MAIN STARTS HERE
+    	// for i := 0 ; i < 10 ; i++ {
+	// 	point := <- randomPoints
+	// 	fmt.Printf("%v\n", point)
+	// }
+
+	// for i := 0 ; i < 3 ; i++ {
+	// 	threePoints := <-randomTriplets
+	// 	PrintPoints(threePoints[:])
+	// }
+
+	// var i int
+	// for plane := range randomPlane{
+	// 	i++
+	// 	fmt.Printf("%d: ", i)
+	// 	plane.Print()
+	// }
+
+	// var i int
+	// for support := range randomSupport{
+	// 	i++
+	// 	fmt.Printf("%d: ", i)
+	// 	fmt.Printf("%v\n", support)
+	// }
+	
+
+	//so it successfully closed the point generator
+	// for i := 0 ; i < 10 ; i++ {
+	// 	point := <- randomPoints
+	// 	fmt.Printf("%v\n", point)
+	// }
+
+    randomSupport := SupportingPointFinder(wg, stop, randomPlane, points, eps)
