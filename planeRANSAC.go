@@ -148,11 +148,17 @@ func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
 	return support;
 }
 
-// //extracts the points that support the given plane
-// //and returns them as a slice of points
-// func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D {
-
-// }
+//extracts the points that support the given plane
+//and returns them as a slice of points
+func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D {
+	var supportingPoints []Point3D
+	for _, point := range points{
+		if(plane.GetDistance(&point) < eps){
+			supportingPoints = append(supportingPoints, point)
+		}
+	}
+	return supportingPoints
+}
 
 // //creates a new slice of points in which all points
 // //belonging to the plane have been removed
@@ -201,8 +207,9 @@ func main() {
 		Point3D{100, 200, 300},
 		Point3D{2, 3, 4},
 	}
-
 	planeSupport := GetSupport(plane, points[:], 7.0)
-	fmt.Printf("%d", planeSupport.SupportSize)
+	fmt.Printf("%d\n", planeSupport.SupportSize)
+	validPoints := GetSupportingPoints(plane, points[:], 7.0)
+	PrintPoints(validPoints)
 
 }
