@@ -187,10 +187,11 @@ func (plane *Plane3D) Print() {
 
 //Pipeline functions
 
+//STAGE 1
 //Randpoint point generator: -> Point3D
 //randomly selects a point from the provided slice of Point3D (the input point cloud).
 //its output channel transmits instances of Point3D
-func randomPointGenerator(wg *sync.WaitGroup, stop <-chan bool, points []Point3D) <-chan Point3D {
+func RandomPointGenerator(wg *sync.WaitGroup, stop <-chan bool, points []Point3D) <-chan Point3D {
 	pointStream := make(chan Point3D)
 
 	go func() {
@@ -206,6 +207,36 @@ func randomPointGenerator(wg *sync.WaitGroup, stop <-chan bool, points []Point3D
 	}()
 
 	return pointStream
+}
+
+//STAGE 2
+//Triplet of points generator: Point3D -> [3]Point3D
+//it reads Point3D instances from its input channel and accumulates 3 points.
+//its output channel transmits arrays of Point3D (composed of 3 points).
+func TripletOfPointsGenerator(wg *sync.WaitGroup, stop <-chan bool, randomPoints <-chan Point3D) <-chan [3]Point3D {
+	tripletPointStream := make(chan [3]Point3D)
+	temp := [3]Point3D{}
+	i := 0
+
+	go func() {
+		defer func() {wg.Done()} ()
+		defer close(tripletPointStream)
+		for point := range randomPoints {
+			temp[i] = point
+			i++
+			if (i == 3) {
+				select {
+					case <- stop:
+						return
+					case tripletPointStream <- temp:
+						temp = [3]Point3D{}
+						i = 0
+				}
+			}
+		}
+	}()
+
+	return tripletPointStream
 }
 
 
@@ -231,11 +262,19 @@ func main() {
 	stop := make(chan bool)
 
 	wg.Add(1)
-	randomPoints := randomPointGenerator(wg, stop, points)
+	randomPoints := RandomPointGenerator(wg, stop, points)
+
+	wg.Add(1)
+	randomTriplets := TripletOfPointsGenerator(wg, stop, randomPoints)
 
 	for i := 0 ; i < 10 ; i++ {
 		point := <- randomPoints
 		fmt.Printf("%v\n", point)
+	}
+
+	for i := 0 ; i < 3 ; i++ {
+		threePoints := <-randomTriplets
+		PrintPoints(threePoints[:])
 	}
 	stop <- true
 	close(stop)
