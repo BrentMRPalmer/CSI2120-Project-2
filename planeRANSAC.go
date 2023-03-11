@@ -239,6 +239,27 @@ func TripletOfPointsGenerator(wg *sync.WaitGroup, stop <-chan bool, randomPoints
 	return tripletPointStream
 }
 
+//STAGE 3
+//TakeN: [3]Point3D -> [3]Point3D
+//it reads arrays of Point3D and resends them. It automatically stops the pipeline after 
+//having received N arrays
+func TakeN(wg *sync.WaitGroup, stop chan<- bool, randomTriplet <-chan [3]Point3D, N int) <-chan [3]Point3D {
+	tripletPointStream := make(chan [3]Point3D)
+
+	go func() {
+		defer func() {
+			wg.Done()
+			close(stop)
+			close(tripletPointStream)
+		}()
+		for i := 0 ; i < N ; i++ {
+			triplet := <- randomTriplet
+			tripletPointStream <- triplet
+		}
+	}()
+
+	return tripletPointStream
+}
 
 func main() {
 	//read the XYZ file specified as a first argument to your go program and create
@@ -254,7 +275,6 @@ func main() {
 	confidence := StringToFloat(args[1])
 	percentageOfPointsOnPlane := StringToFloat(args[2]) 
 	numIterations := GetNumberOfIterations(confidence, percentageOfPointsOnPlane)
-	fmt.Printf("%d\n", numIterations)
 
 	//create and start the RANSAC find dominant plane pipeline
 	//this pipeline automatically stops after the required number of iterations
@@ -267,16 +287,30 @@ func main() {
 	wg.Add(1)
 	randomTriplets := TripletOfPointsGenerator(wg, stop, randomPoints)
 
+	wg.Add(1)
+	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
+
+
+	// for i := 0 ; i < 10 ; i++ {
+	// 	point := <- randomPoints
+	// 	fmt.Printf("%v\n", point)
+	// }
+
+	// for i := 0 ; i < 3 ; i++ {
+	// 	threePoints := <-randomTriplets
+	// 	PrintPoints(threePoints[:])
+	// }
+
+	for i := 0 ; i < 40 ; i++ {
+		threePoints := <- nTriplets
+		PrintPoints(threePoints[:])
+	}
+
+	//so it successfully closed the point generator
 	for i := 0 ; i < 10 ; i++ {
 		point := <- randomPoints
 		fmt.Printf("%v\n", point)
 	}
 
-	for i := 0 ; i < 3 ; i++ {
-		threePoints := <-randomTriplets
-		PrintPoints(threePoints[:])
-	}
-	stop <- true
-	close(stop)
 	wg.Wait()
 }
