@@ -264,20 +264,15 @@ func TakeN(wg *sync.WaitGroup, stop chan<- bool, randomTriplet <-chan [3]Point3D
 //STAGE 4 
 //Plane estimator: It reads arrays of three Point3D and computes the plane defined by these points
 //its ouput channel transmits Plane3D instances describing the computed plane parameters
-func PlaneEstimator(wg *sync.WaitGroup, stop <-chan bool, randomTriplet <-chan [3]Point3D) <-chan Plane3D {
+func PlaneEstimator(wg *sync.WaitGroup, randomTriplet <-chan [3]Point3D) <-chan Plane3D {
 	planeStream := make(chan Plane3D)
 
 	go func() {
 		defer func() {wg.Done()} ()
 		defer close(planeStream)
-		for {
-			triplet := <- randomTriplet
+		for triplet := range randomTriplet {
 			plane := GetPlane(triplet[:])
-			select {
-				case <- stop:
-					return
-				case planeStream <- plane:
-			}
+			planeStream <- plane
 		}
 	}()
 
@@ -289,20 +284,15 @@ func PlaneEstimator(wg *sync.WaitGroup, stop <-chan bool, randomTriplet <-chan [
 //It counts the number of points in the provided slice of Point3D (the input point cloud)
 //that supports the received 3D plane. Its output channel transmits the plane
 //parameters and the number of supporting points in a Point3DwSupport instance
-func SupportingPointFinder(wg *sync.WaitGroup, stop <-chan bool, randomPlane <-chan Plane3D, points []Point3D, eps float64) <-chan Plane3DwSupport {
+func SupportingPointFinder(wg *sync.WaitGroup, randomPlane <-chan Plane3D, points []Point3D, eps float64) <-chan Plane3DwSupport {
 	planeSupportStream := make(chan Plane3DwSupport)
 
 	go func() {
 		defer func() {wg.Done()} ()
 		defer close(planeSupportStream)
-		for {
-			plane := <- randomPlane
+		for plane := range randomPlane {
 			planeSupport := GetSupport(plane, points[:], eps)
-			select {
-				case <- stop:
-					return
-				case planeSupportStream <- planeSupport:
-			}
+			planeSupportStream <- planeSupport
 		}
 	}()
 
@@ -331,17 +321,12 @@ func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3Dw
 //It receives Plane3DwSupport instances and keeps in memory the plane with the best support
 //received so far. This componenet does not output values, it simply maintains the provided
 //*Plane3DwSupport variable
-func DominantPointIdentifier(wg *sync.WaitGroup, stop <-chan bool, supportPlanes <-chan Plane3DwSupport, dominantPlane *Plane3DwSupport) {
+func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSupport, dominantPlane *Plane3DwSupport) {
 	go func() {
 		defer func() {wg.Done()} ()
-		for {
-			select {
-				case <- stop:
-					return
-				case planeToProcess := <- supportPlanes:
-					if planeToProcess.SupportSize > dominantPlane.SupportSize {
-						*dominantPlane = planeToProcess
-					}
+		for planeToProcess := range supportPlanes{
+			if planeToProcess.SupportSize > dominantPlane.SupportSize {
+				*dominantPlane = planeToProcess
 			}
 		}
 	}()
@@ -381,21 +366,19 @@ func main() {
 	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
 
 	wg.Add(1)
-	randomPlane := PlaneEstimator(wg, stop, nTriplets)
+	randomPlane := PlaneEstimator(wg, nTriplets)
 
 	var supportingPointFinders []<-chan Plane3DwSupport
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
-		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, stop, randomPlane, points, eps))
+		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, randomPlane, points, eps))
 	}
 
 	wg.Add(8)
 	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
 
-	wg.Add(1)
-	DominantPointIdentifier(wg, stop, randomSupportingPointFinder, bestSupport)
-
-	fmt.Printf("%v", bestSupport)
+	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
 
 	wg.Wait()
+	fmt.Printf("%v", bestSupport)
 }
