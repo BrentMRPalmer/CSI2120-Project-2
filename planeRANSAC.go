@@ -334,15 +334,14 @@ func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSu
 
 
 func main() {
-	bestSupport := &Plane3DwSupport{}
-
 	//read the XYZ file specified as a first argument to your go program and create
 	//the corresponding slice of Point3D, composed of the set of points of the XYZ file
 	args := os.Args[1:]
-	points := ReadXYZ(args[0])
+	filename := args[0]
+	points := ReadXYZ(filename)
 
 	//create a bestSupport variable of type Plane3DwSupport initialized to all 0s
-	//var bestSupport Plane3DwSupport
+	bestSupport := &Plane3DwSupport{}
 
 	//find the number of iterations required based on the specified confidence and percentage
 	//provided as 1st and 2nd arguments arguments for the GetNumberOfIterations function
@@ -380,5 +379,8 @@ func main() {
 	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
 
 	wg.Wait()
-	fmt.Printf("%v", bestSupport)
+
+	SaveXYZ(filename[:len(filename)-4] + "_p.XYZ", GetSupportingPoints(bestSupport.Plane3D, points, eps))
+	SaveXYZ(filename[:len(filename)-4] + "_p0.XYZ", RemovePlane(bestSupport.Plane3D, points, eps))
+
 }
