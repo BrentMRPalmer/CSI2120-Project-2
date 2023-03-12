@@ -309,7 +309,48 @@ func SupportingPointFinder(wg *sync.WaitGroup, stop <-chan bool, randomPlane <-c
 	return planeSupportStream
 }
 
+// STAGE 6
+// Fan In: Plane3DwSupport -> Plane3DwSupport
+// It multiplexes the results received from multiple channels into one output channel
+func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3DwSupport {
+	planeSupportStream := make(chan Plane3DwSupport)
+	for _, inputPlaneSupportStream := range supports{
+		go func(inputPlaneSupportStream <-chan Plane3DwSupport){
+			defer wg.Done()
+			for planeSupport := range inputPlaneSupportStream {
+				planeSupportStream <- planeSupport
+			}
+		}(inputPlaneSupportStream)
+	}
+
+	return planeSupportStream
+}
+
+//STAGE 7
+//Dominant Plane Identifer: Plane3DSupport
+//It receives Plane3DwSupport instances and keeps in memory the plane with the best support
+//received so far. This componenet does not output values, it simply maintains the provided
+//*Plane3DwSupport variable
+func DominantPointIdentifier(wg *sync.WaitGroup, stop <-chan bool, supportPlanes <-chan Plane3DwSupport, dominantPlane *Plane3DwSupport) {
+	go func() {
+		defer func() {wg.Done()} ()
+		for {
+			select {
+				case <- stop:
+					return
+				case planeToProcess := <- supportPlanes:
+					if planeToProcess.SupportSize > dominantPlane.SupportSize {
+						*dominantPlane = planeToProcess
+					}
+			}
+		}
+	}()
+}
+
+
 func main() {
+	bestSupport := &Plane3DwSupport{}
+
 	//read the XYZ file specified as a first argument to your go program and create
 	//the corresponding slice of Point3D, composed of the set of points of the XYZ file
 	args := os.Args[1:]
@@ -348,6 +389,13 @@ func main() {
 		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, stop, randomPlane, points, eps))
 	}
 
+	wg.Add(8)
+	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
+
+	wg.Add(1)
+	DominantPointIdentifier(wg, stop, randomSupportingPointFinder, bestSupport)
+
+	fmt.Printf("%v", bestSupport)
 
 	wg.Wait()
 }
