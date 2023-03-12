@@ -372,16 +372,24 @@ func Pipeline(numThreads int, points []Point3D, bestSupport *Plane3DwSupport, co
 }
 
 func TestTime(points []Point3D, bestSupport *Plane3DwSupport, confidence float64, percentageOfPointsOnPlane float64, eps float64, numIterations int) {
-	for i := 1 ; i <= 500; i++ {
+	file, err := os.Create("ComputationTimesLargerSample.XYZ")
+	ErrorCheck(err)
+	defer file.Close()
+	file.WriteString("Threads\tTime\n")
+
+	for i := 1 ; i <= 250; i++ {
 		start := time.Now()
 		for j := 0 ; j < 200 ; j++ {
 			Pipeline(i, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
 		}
 		end := time.Now()
 		elapsed := end.Sub(start)
+		_, err := file.WriteString(fmt.Sprintf("%d\t%f\n", i, float64(elapsed.Milliseconds())/200.0))
+		ErrorCheck(err)
 		fmt.Printf("Average elapsed time with %d threads: %v\n", i, elapsed/200)
 	}
-
+	err = file.Sync()
+	ErrorCheck(err)
 }
 
 func main() {
