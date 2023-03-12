@@ -304,14 +304,24 @@ func SupportingPointFinder(wg *sync.WaitGroup, randomPlane <-chan Plane3D, point
 // It multiplexes the results received from multiple channels into one output channel
 func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3DwSupport {
 	planeSupportStream := make(chan Plane3DwSupport)
+	var fwg sync.WaitGroup
+	fwg.Add(len(supports))
+
 	for _, inputPlaneSupportStream := range supports{
 		go func(inputPlaneSupportStream <-chan Plane3DwSupport){
 			defer wg.Done()
+			defer fwg.Done()
 			for planeSupport := range inputPlaneSupportStream {
 				planeSupportStream <- planeSupport
 			}
 		}(inputPlaneSupportStream)
 	}
+
+	go func(){
+		defer wg.Done()
+		defer close(planeSupportStream)
+		fwg.Wait()
+	}()
 
 	return planeSupportStream
 }
@@ -322,14 +332,11 @@ func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3Dw
 //received so far. This componenet does not output values, it simply maintains the provided
 //*Plane3DwSupport variable
 func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSupport, dominantPlane *Plane3DwSupport) {
-	go func() {
-		defer func() {wg.Done()} ()
-		for planeToProcess := range supportPlanes{
-			if planeToProcess.SupportSize > dominantPlane.SupportSize {
-				*dominantPlane = planeToProcess
-			}
+	for planeToProcess := range supportPlanes{
+		if planeToProcess.SupportSize > dominantPlane.SupportSize {
+			*dominantPlane = planeToProcess
 		}
-	}()
+	}
 }
 
 
@@ -376,6 +383,7 @@ func main() {
 	wg.Add(8)
 	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
 
+	wg.Add(1)
 	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
 
 	wg.Wait()
