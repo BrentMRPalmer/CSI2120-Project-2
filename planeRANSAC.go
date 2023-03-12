@@ -1,3 +1,5 @@
+//Student Full Name: Brent Palmer
+//Student ID: 300193610
 package main
 
 import (
@@ -13,12 +15,14 @@ import (
 	"time"
 )
 
+//Stores 3D points
 type Point3D struct {
 	X float64
 	Y float64
 	Z float64
 }
 
+//Stores equations for 3D planes
 type Plane3D struct {
 	A float64
 	B float64
@@ -26,6 +30,7 @@ type Plane3D struct {
 	D float64
 }
 
+//Stores a 3D plane with how many supporting points there are
 type Plane3DwSupport struct {
 	Plane3D
 	SupportSize int
@@ -105,6 +110,7 @@ func (p1 *Point3D) GetDistance(p2 *Point3D) float64 {
 
 //computes the distance between a point and a plane
 func (plane *Plane3D) GetDistance(point *Point3D) float64{
+	// l = |a*x + b*y + c*z - d| / sqrt(a^2, b^2, c^2)
 	return math.Abs( plane.A*point.X + plane.B*point.Y + plane.C*point.Z - plane.D) / math.Sqrt(plane.A*plane.A + plane.B*plane.B + plane.C*plane.C)
 }
 
@@ -135,15 +141,17 @@ func GetPlane(points []Point3D) Plane3D {
 
 //computes the number of required RANSAC iterations
 func GetNumberOfIterations(confidence float64, percentageOfPointsOnPlane float64) int {
-	// l - |a*x + b*y + c*z - d| / sqrt(a^2, b^2, c^2)
 	return int( math.Ceil( math.Log10(1 - confidence) / math.Log10(1 - math.Pow(percentageOfPointsOnPlane, 3) ) ) )
 }
 
 // //computes the support of a plane in a set of points
 func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
+	//initialize the variable used to store the support
 	support := Plane3DwSupport { plane, 0 }
 
 	for _, point := range points{
+		//iterate over each point, and if the point is within eps 
+		//from the plane equation, increase the support counter
 		if(plane.GetDistance(&point) < eps){
 			support.SupportSize++;
 		}
@@ -154,8 +162,11 @@ func GetSupport(plane Plane3D, points []Point3D, eps float64) Plane3DwSupport {
 //extracts the points that support the given plane
 //and returns them as a slice of points
 func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D {
+	//initialize the slice used to store the supporting points
 	var supportingPoints []Point3D
 	for _, point := range points{
+		//iterate over each point, and if the point is within eps 
+		//from the plane equation, append it to the slice
 		if(plane.GetDistance(&point) < eps){
 			supportingPoints = append(supportingPoints, point)
 		}
@@ -166,8 +177,11 @@ func GetSupportingPoints(plane Plane3D, points []Point3D, eps float64) []Point3D
 //creates a new slice of points in which all points
 //belonging to the plane have been removed
 func RemovePlane(plane Plane3D, points []Point3D, eps float64) []Point3D {
+	//initialize the slice used to store the leftover points
 	var leftoverPoints []Point3D
 	for _, point := range points{
+		//iterate over each point, and if the point is not within eps 
+		//from the plane equation, append it to the slice
 		if(plane.GetDistance(&point) >= eps){
 			leftoverPoints = append(leftoverPoints, point)
 		}
@@ -175,6 +189,7 @@ func RemovePlane(plane Plane3D, points []Point3D, eps float64) []Point3D {
 	return leftoverPoints
 }
 
+//helper function used to print out the points (used while debugging)
 func PrintPoints(points []Point3D) {
 	for i, point := range points {
 		fmt.Println(i + 1, point)
@@ -193,15 +208,19 @@ func (plane *Plane3D) Print() {
 //randomly selects a point from the provided slice of Point3D (the input point cloud).
 //its output channel transmits instances of Point3D
 func RandomPointGenerator(wg *sync.WaitGroup, stop <-chan bool, points []Point3D) <-chan Point3D {
+	//create the channel that will contain the randomly selected points
 	pointStream := make(chan Point3D)
 
 	go func() {
+		//when finished, decrement thread count and close stream
 		defer func() {wg.Done()} ()
 		defer close(pointStream)
 		for {
 			select {
+				//will stop if asked by TakeN
 				case <- stop:
 					return
+				//will add a random point from points to the point channel
 				case pointStream <- points[rand.Intn(len(points))]:
 			}
 		}
@@ -220,16 +239,20 @@ func TripletOfPointsGenerator(wg *sync.WaitGroup, stop <-chan bool, randomPoints
 	i := 0
 
 	go func() {
+		//when finished, decrement thread count and close stream
 		defer func() {wg.Done()} ()
 		defer close(tripletPointStream)
 		for point := range randomPoints {
+			//iterate over the random points and store them in triplets
 			temp[i] = point
 			i++
+			//once there are three points, send them off
 			if (i == 3) {
 				select {
 					case <- stop:
 						return
 					case tripletPointStream <- temp:
+						//once points are inserted in channel, begin acquiring more
 						temp = [3]Point3D{}
 						i = 0
 				}
@@ -245,14 +268,18 @@ func TripletOfPointsGenerator(wg *sync.WaitGroup, stop <-chan bool, randomPoints
 //it reads arrays of Point3D and resends them. It automatically stops the pipeline after 
 //having received N arrays
 func TakeN(wg *sync.WaitGroup, stop chan<- bool, randomTriplet <-chan [3]Point3D, N int) <-chan [3]Point3D {
+	//initialize channel that will be used for N triplets
 	tripletPointStream := make(chan [3]Point3D)
 
 	go func() {
 		defer func() {
+			//when finished, decrement thread count and close stream
 			wg.Done()
+			//close stop to stop generating random points and random triplets
 			close(stop)
 			close(tripletPointStream)
 		}()
+		//generate N triplets - this controls the quantity
 		for i := 0 ; i < N ; i++ {
 			triplet := <- randomTriplet
 			tripletPointStream <- triplet
@@ -266,11 +293,15 @@ func TakeN(wg *sync.WaitGroup, stop chan<- bool, randomTriplet <-chan [3]Point3D
 //Plane estimator: It reads arrays of three Point3D and computes the plane defined by these points
 //its ouput channel transmits Plane3D instances describing the computed plane parameters
 func PlaneEstimator(wg *sync.WaitGroup, randomTriplet <-chan [3]Point3D) <-chan Plane3D {
+	//initialize the stream of planes
 	planeStream := make(chan Plane3D)
 
 	go func() {
+		//when finished, decrement thread count and close stream
 		defer func() {wg.Done()} ()
 		defer close(planeStream)
+		//for each of the N triplets generated, find the equation
+		//of the plane for the triplet and insert it in the channel
 		for triplet := range randomTriplet {
 			plane := GetPlane(triplet[:])
 			planeStream <- plane
@@ -286,11 +317,15 @@ func PlaneEstimator(wg *sync.WaitGroup, randomTriplet <-chan [3]Point3D) <-chan 
 //that supports the received 3D plane. Its output channel transmits the plane
 //parameters and the number of supporting points in a Point3DwSupport instance
 func SupportingPointFinder(wg *sync.WaitGroup, randomPlane <-chan Plane3D, points []Point3D, eps float64) <-chan Plane3DwSupport {
+	//initialize the channel for Plane3DwSupport
 	planeSupportStream := make(chan Plane3DwSupport)
 
 	go func() {
+		//when finished, decrement thread count and close stream
 		defer func() {wg.Done()} ()
 		defer close(planeSupportStream)
+		//for each random plane generated, calculate the support
+		//of that plane and send it to the channel
 		for plane := range randomPlane {
 			planeSupport := GetSupport(plane, points[:], eps)
 			planeSupportStream <- planeSupport
@@ -304,12 +339,18 @@ func SupportingPointFinder(wg *sync.WaitGroup, randomPlane <-chan Plane3D, point
 // Fan In: Plane3DwSupport -> Plane3DwSupport
 // It multiplexes the results received from multiple channels into one output channel
 func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3DwSupport {
+	//initialize the channel of Plane3DwSupport 
 	planeSupportStream := make(chan Plane3DwSupport)
+
+	//make a new waitgroup for each of the support calculates to ensure they finish
 	var fwg sync.WaitGroup
 	fwg.Add(len(supports))
 
+	//for each of the support calculators generated, make a goroutine that reads in from that 
+	//channel, and insert it into the one channel they all fan into
 	for _, inputPlaneSupportStream := range supports{
 		go func(inputPlaneSupportStream <-chan Plane3DwSupport){
+			//when each thread finishes, decrement thread count 
 			defer wg.Done()
 			defer fwg.Done()
 			for planeSupport := range inputPlaneSupportStream {
@@ -318,6 +359,7 @@ func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3Dw
 		}(inputPlaneSupportStream)
 	}
 
+	//close planeSupportStream only once all the supports calculators are done being used
 	go func(){
 		defer wg.Done()
 		defer close(planeSupportStream)
@@ -333,6 +375,8 @@ func FanIn(wg *sync.WaitGroup, supports[]<-chan Plane3DwSupport) <-chan Plane3Dw
 //received so far. This componenet does not output values, it simply maintains the provided
 //*Plane3DwSupport variable
 func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSupport, dominantPlane *Plane3DwSupport) {
+	//for each of the support planes found, save the one with the highest number of support points
+	//by reference as the dominant plane
 	for planeToProcess := range supportPlanes{
 		if planeToProcess.SupportSize > dominantPlane.SupportSize {
 			*dominantPlane = planeToProcess
@@ -340,50 +384,69 @@ func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSu
 	}
 }
 
+//Consolidate all pipeline activities into one function
+//Allows for more efficient runtime testing (and it looks nice)
 func Pipeline(numThreads int, points []Point3D, bestSupport *Plane3DwSupport, confidence float64, percentageOfPointsOnPlane float64, eps float64, numIterations int) {
+	//initialize the waitgroup used for the entire pipeline, as well as the stop used for the first half
 	wg := &sync.WaitGroup{}
 	stop := make(chan bool)
 
+	//initialize the random point generator, and increase thread tracker
 	wg.Add(1)
 	randomPoints := RandomPointGenerator(wg, stop, points)
 
+	//initialize the random triplet generator, and increase thread tracker
 	wg.Add(1)
 	randomTriplets := TripletOfPointsGenerator(wg, stop, randomPoints)
 
+	//control the number of triplets generated based on the calculated number of iterations, and increase thread tracker
 	wg.Add(1)
 	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
 
+	//initialize the random plane generator, and increase thread tracker (generates N planes)
 	wg.Add(1)
 	randomPlane := PlaneEstimator(wg, nTriplets)
 
+	//create a slice of supporting point finders that is dependent on input number of threads
+	//increase thread tracker for each
 	var supportingPointFinders []<-chan Plane3DwSupport
 	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
 		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, randomPlane, points, eps))
 	}
 
+	//add the number of threads to the thread counter, as that many threads will be created
+	//while fanning in during the method
+	//initialize the random support point finder
 	wg.Add(numThreads)
 	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
 
+	//Identify the dominant plane
 	wg.Add(1)
 	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
 
+	//wait until all threads finish executing (best support saved by reference)
 	wg.Wait()
 }
 
 func TestTime(points []Point3D, bestSupport *Plane3DwSupport, confidence float64, percentageOfPointsOnPlane float64, eps float64, numIterations int) {
+	//create the file to store the computation times in
 	file, err := os.Create("ComputationTimesLargerSample.XYZ")
 	ErrorCheck(err)
 	defer file.Close()
+	//make the header of the file
 	file.WriteString("Threads\tTime\n")
 
+	//test runtime for the first 250 threads
 	for i := 1 ; i <= 250; i++ {
+		//check runtime of 200 executions of the pipeline
 		start := time.Now()
 		for j := 0 ; j < 200 ; j++ {
 			Pipeline(i, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
 		}
 		end := time.Now()
 		elapsed := end.Sub(start)
+		//write the average runtime to a file, and to the console
 		_, err := file.WriteString(fmt.Sprintf("%d\t%f\n", i, float64(elapsed.Milliseconds())/200.0))
 		ErrorCheck(err)
 		fmt.Printf("Average elapsed time with %d threads: %v\n", i, elapsed/200)
@@ -398,6 +461,7 @@ func main() {
 	args := os.Args[1:]
 	filename := args[0]
 	points := ReadXYZ(filename)
+	threads := 8
 
 	//create a bestSupport variable of type Plane3DwSupport initialized to all 0s
 	bestSupport := &Plane3DwSupport{}
@@ -411,9 +475,12 @@ func main() {
 
 	//create and start the RANSAC find dominant plane pipeline
 	//this pipeline automatically stops after the required number of iterations
-	//Pipeline(threads, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
-	TestTime(points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
+	Pipeline(threads, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
 
+	//Commented out, but used to test the runtime
+	//TestTime(points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
+
+	//Write the results to a file with the appropriate name
 	SaveXYZ(filename[:len(filename)-4] + "_p.XYZ", GetSupportingPoints(bestSupport.Plane3D, points, eps))
 	SaveXYZ(filename[:len(filename)-4] + "_p0.XYZ", RemovePlane(bestSupport.Plane3D, points, eps))
 
