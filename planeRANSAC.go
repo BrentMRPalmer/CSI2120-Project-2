@@ -10,6 +10,7 @@ import (
 	"math"
 	"sync"
 	"math/rand"
+	"time"
 )
 
 type Point3D struct {
@@ -339,6 +340,49 @@ func DominantPointIdentifier(wg *sync.WaitGroup, supportPlanes <-chan Plane3DwSu
 	}
 }
 
+func Pipeline(numThreads int, points []Point3D, bestSupport *Plane3DwSupport, confidence float64, percentageOfPointsOnPlane float64, eps float64, numIterations int) {
+	wg := &sync.WaitGroup{}
+	stop := make(chan bool)
+
+	wg.Add(1)
+	randomPoints := RandomPointGenerator(wg, stop, points)
+
+	wg.Add(1)
+	randomTriplets := TripletOfPointsGenerator(wg, stop, randomPoints)
+
+	wg.Add(1)
+	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
+
+	wg.Add(1)
+	randomPlane := PlaneEstimator(wg, nTriplets)
+
+	var supportingPointFinders []<-chan Plane3DwSupport
+	for i := 0; i < numThreads; i++ {
+		wg.Add(1)
+		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, randomPlane, points, eps))
+	}
+
+	wg.Add(numThreads)
+	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
+
+	wg.Add(1)
+	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
+
+	wg.Wait()
+}
+
+func TestTime(points []Point3D, bestSupport *Plane3DwSupport, confidence float64, percentageOfPointsOnPlane float64, eps float64, numIterations int) {
+	for i := 1 ; i <= 500; i++ {
+		start := time.Now()
+		for j := 0 ; j < 200 ; j++ {
+			Pipeline(i, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
+		}
+		end := time.Now()
+		elapsed := end.Sub(start)
+		fmt.Printf("Average elapsed time with %d threads: %v\n", i, elapsed/200)
+	}
+
+}
 
 func main() {
 	//read the XYZ file specified as a first argument to your go program and create
@@ -359,34 +403,8 @@ func main() {
 
 	//create and start the RANSAC find dominant plane pipeline
 	//this pipeline automatically stops after the required number of iterations
-	wg := &sync.WaitGroup{}
-	stop := make(chan bool)
-
-	wg.Add(1)
-	randomPoints := RandomPointGenerator(wg, stop, points)
-
-	wg.Add(1)
-	randomTriplets := TripletOfPointsGenerator(wg, stop, randomPoints)
-
-	wg.Add(1)
-	nTriplets := TakeN(wg, stop, randomTriplets, numIterations)
-
-	wg.Add(1)
-	randomPlane := PlaneEstimator(wg, nTriplets)
-
-	var supportingPointFinders []<-chan Plane3DwSupport
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		supportingPointFinders = append(supportingPointFinders, SupportingPointFinder(wg, randomPlane, points, eps))
-	}
-
-	wg.Add(8)
-	randomSupportingPointFinder := FanIn(wg, supportingPointFinders)
-
-	wg.Add(1)
-	DominantPointIdentifier(wg, randomSupportingPointFinder, bestSupport)
-
-	wg.Wait()
+	//Pipeline(threads, points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
+	TestTime(points, bestSupport, confidence, percentageOfPointsOnPlane, eps, numIterations)
 
 	SaveXYZ(filename[:len(filename)-4] + "_p.XYZ", GetSupportingPoints(bestSupport.Plane3D, points, eps))
 	SaveXYZ(filename[:len(filename)-4] + "_p0.XYZ", RemovePlane(bestSupport.Plane3D, points, eps))
